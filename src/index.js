@@ -1,9 +1,8 @@
 // It might be a good idea to add event listener to make sure this file
 // only runs after the DOM has finshed loading.
 
-const addQuoteForm = document.querySelector(".new-quote-form");
-
 const QUOTES_URL = "http://localhost:3000/quotes?_embed=likes";
+const LIKES_URL = "http://localhost:3000/likes";
 
 const getQuotes = () => {
     fetch(QUOTES_URL)
@@ -16,38 +15,32 @@ const getQuotes = () => {
 // delete a quote yo!
 
 const deleteQuoteRequest = quoteId => {
-    // function releasePokemonRequest, expects arg of pokemonId
     return fetch(`${QUOTES_URL}/${quoteId}`, {
-        // returns a fetch of pokemons URL (above) and interpolates the pokemonId we passed in
-        method: "DELETE" // we stipulate that our method here is delete
-    }).then(resp => resp.json()); // Returns the deleted pokemon in resp so we can add confirmation messages etc.
+        method: "DELETE"
+    }).then(resp => resp.json());
 };
 
-//create a quote
-
-// const createQuote = newQuote => {
-//   return fetch(QUOTES_URL, {
-//     method: "POST",
-//     headers: {
-//       "Content-Type": "application/json",
-//       Accept: "applicaton/json"
-//     },
-//     body: JSON.stringify(newQuote)
-//   }).then(resp => resp.json());
-// };
+// update likes to the sever
 
 const updateLikes = quote => {
-    const quoteUrl = `${QUOTES_URL}/${quote.id}`;
-    const updatedLikes = { likes: ++quote.likes };
-
-    return fetch(quoteUrl, {
-        method: "PATCH",
+    const updatedLikes = { quoteId: quote.id };
+    return fetch(LIKES_URL, {
+        method: "POST",
         headers: {
             "Content-Type": "application/json",
             Accept: "applicaton/json"
         },
         body: JSON.stringify(updatedLikes)
     }).then(resp => resp.json());
+};
+
+// dynamically alters our DOM to show the new like number
+
+const handleUpdateLikes = (span, quote) => {
+    updateLikes(quote).then(updatedQuote => {
+        currentLikes = parseInt(span.innerText);
+        span.innerText = currentLikes + 1;
+    });
 };
 
 const renderAllQuotes = allQuotes => {
@@ -75,18 +68,50 @@ const renderQuoteCard = quote => {
     block.className = "blockquote";
     footer.className = "blockquote-footer";
     footer.innerText = quote.author;
-    btn_s.innerText = `Likes: ${quote.likes.id}`;
+    btn_s.innerText = "Likes: ";
     btn_s.className = "btn-success";
     btn_d.innerText = "Delete";
     btn_d.className = "btn-danger";
+    span.innerText = quote.likes.length;
 
     btn_d.addEventListener("click", () => deleteQuote(quote.id, li));
 
-    li.append(block, p, footer, btn_s, span, btn_d);
+    btn_s.append(span);
+    li.append(block, p, footer, btn_s, btn_d);
+
     btn_s.addEventListener("click", () => {
-        handleUpdateLikes(li, quote);
+        handleUpdateLikes(span, quote);
     });
     return li;
+};
+
+// get the form and the input fields and request to backend
+const handleCreateQuote = () => {
+    const quote = document.querySelector("#new-quote").value;
+    const author = document.querySelector("#author").value;
+    const quoteObject = { quote: quote, author: author, likes: [] };
+    createQuote(quoteObject).then(quote => {
+        renderQuote(quote);
+    });
+};
+
+// const handleUpdateLikes = (span, quote) => {
+//     updateLikes(quote).then(updatedQuote => {
+//       currentLikes = parseInt(span.innerText);
+//       span.innerText = currentLikes + 1;
+//     });
+//   };
+
+// create a quote
+const createQuote = quoteObject => {
+    return fetch(QUOTES_URL, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            Accept: "applicaton/json"
+        },
+        body: JSON.stringify(quoteObject)
+    }).then(resp => resp.json());
 };
 
 const deleteQuote = (quoteId, li) => {
@@ -96,5 +121,13 @@ const deleteQuote = (quoteId, li) => {
 const init = () => {
     getQuotes();
 };
+
+const form = document.querySelector("#new-quote-form");
+
+form.addEventListener("submit", e => {
+    e.preventDefault();
+    handleCreateQuote();
+    form.reset();
+});
 
 document.addEventListener("DOMContentLoaded", init);
